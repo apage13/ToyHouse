@@ -7,7 +7,11 @@
 #define SND_LETS_PRETEND_ITS_MORNING    6
 #define SND_LETS_PRETEND_ITS_NIGHTTIME  7
 #define SND_OPPOSITES                   8
-
+#define SND_SUN                         9
+#define SND_MOON                        10
+#define SND_LITTLE_BIRD_DOWN            11
+#define SND_BIG_BIRD_DOWN               12
+      
 //Definiations for house inputs and outputs
 #define INPUT_LIGHT_SWITCH 1
 #define INPUT_DOORBELL     2
@@ -51,15 +55,24 @@ void PlaySound(int soundNumber)
   //Send track to play to sound module
 }
 
-void setup() {
-  // put your setup code here, to run once:
-
+void setup()
+{
+  //Read in initial state of all buttons so we don't get changed events on everything
+  DuckPressed = digitalRead(INPUT_DUCK);
+  DoorbellPressed = digitalRead(INPUT_DOORBELL);
+  BookPressed = digitalRead(INPUT_BOOK);
+  FridgeDoorOpen = digitalRead(INPUT_FRIDGE_DOOR);
+  LightSwitchOn = digitalRead(INPUT_LIGHT_SWITCH);
+  LittleBirdDown = digitalRead(INPUT_BIRDS);
+  DaytimeWindowSelected = digitalRead(INPUT_WINDOW);
+  OppositeModeSelected = digitalRead(INPUT_MODE);
+  
+  //Make sure lamp output is off
+  digitalWrite(OUTPUT_LAMP, false);
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
-  bool inputState;
-  
+void loop()
+{    
   //If playing a song, we ignore other buttton presses until the song completes
   if (PlayingSong)
   {
@@ -207,19 +220,31 @@ void ExecuteLightSwitchChanged(bool lightOn)
 
 void ExecuteBirdsChanged(bool littleBirdDown)
 {
-  
+  if (OppositeModeSelected)
+  {
+    if (littleBirdDown)
+    {
+      PlaySound(SND_LITTLE_BIRD_DOWN);
+    }
+    else
+    {
+      PlaySound(SND_BIG_BIRD_DOWN);
+    }
+  }
 }
 
 void ExecuteWindowChanged(bool daytimeView)
 {
-  
-}
-
-void ExecuteModeChanged(bool oppositeMode)
-{
-  if (oppositeMode)
+  if (OppositeModeSelected)
   {
-    PlaySound(SND_OPPOSITES);
+    if (DaytimeWindowSelected)
+    {
+      PlaySound(SND_SUN);  
+    }
+    else
+    {
+      PlaySound(SND_MOON);
+    }
   }
   else //Normal Mode
   {
@@ -231,6 +256,18 @@ void ExecuteModeChanged(bool oppositeMode)
     {
       PlaySound(SND_LETS_PRETEND_ITS_NIGHTTIME);
     }
+  }
+}
+
+void ExecuteModeChanged(bool oppositeMode)
+{
+  if (oppositeMode)
+  {
+    PlaySound(SND_OPPOSITES);
+  }
+  else //Normal Mode
+  {
+    ExecuteWindowChanged(DaytimeWindowSelected);
   }
 }
 
