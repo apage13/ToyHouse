@@ -1,16 +1,33 @@
+#include <SoftwareSerial.h>
+#include <DFPlayer_Mini_Mp3.h>
+
 //Definitions for sound tracks
 #define SND_BRIGHT                      1
 #define SND_DARK                        2
 #define SND_LIGHTS_ON                   3
 #define SND_LIGHTS_OFF                  4
 #define SND_SUN_IS_UP                   5
-#define SND_LETS_PRETEND_ITS_MORNING    6
+#define SND_LETS_PRETEND_ITS_MORNING    6 // LETS-PRETEND_ITS_LUNCHTIME
 #define SND_LETS_PRETEND_ITS_NIGHTTIME  7
 #define SND_OPPOSITES                   8
 #define SND_SUN                         9
 #define SND_MOON                        10
 #define SND_LITTLE_BIRD_DOWN            11
 #define SND_BIG_BIRD_DOWN               12
+#define SND_WASH_YOUR_HANDS             13
+#define SND_TAKING_A_BATH               14
+#define SND_FULL_OF_BUBBLES             15
+#define SND_LITTLE_RUBBER_DUCK_SONG     16
+//
+#define SND_SHORT_DOORBELL              17
+#define SND_LONG_DOORBELL               18
+#define SND_QUACK_LONG                  19
+#define SND_QUACK_SHORT                 20
+#define SND_QUACK_LOUD                  21
+#define SND_QUACK_QUIET                 22
+
+#define SND_NIGHT                       19
+#define SND_DAY                         20
       
 //Definiations for house inputs and outputs
 #define INPUT_LIGHT_SWITCH 1
@@ -22,6 +39,8 @@
 #define INPUT_WINDOW       7
 #define INPUT_MODE         8
 #define OUTPUT_LAMP        9
+
+#define INPUT_BUSY_SIGNAL  10
 
 bool LightSwitchOn;
 enum LightSwitchStates
@@ -41,6 +60,8 @@ bool DuckPressed;
 bool DaytimeWindowSelected;
 bool OppositeModeSelected;
 
+int DaytimeDuckSounds[4];
+
 bool PlayingSong;
 
 void PlaySong(int songNumber)
@@ -48,15 +69,24 @@ void PlaySong(int songNumber)
   //Send track to play to sound module
   //Set flag that we are playing a song so don't interrupt
   PlayingSong = true;
+  mp3_play (songNumber);
+  delay(100); //Wait 100ms before moving on to make sure the song has started playing and busy signal is high
 }
 
 void PlaySound(int soundNumber)
 {
   //Send track to play to sound module
+  mp3_play (soundNumber);
 }
 
 void setup()
 {
+  //Initialize serial port for sound module
+  Serial.begin (9600);
+  mp3_set_serial (Serial);      //set Serial for DFPlayer-mini mp3 module 
+  delay(1);                     // delay 1ms to set volume
+  mp3_set_volume (5);          // value 0~30
+
   //Read in initial state of all buttons so we don't get changed events on everything
   DuckPressed = digitalRead(INPUT_DUCK);
   DoorbellPressed = digitalRead(INPUT_DOORBELL);
@@ -69,6 +99,12 @@ void setup()
   
   //Make sure lamp output is off
   digitalWrite(OUTPUT_LAMP, false);
+
+  //Load arrays for groups of sounds
+  DaytimeDuckSounds[0] = SND_WASH_YOUR_HANDS;
+  DaytimeDuckSounds[1] = SND_TAKING_A_BATH;
+  DaytimeDuckSounds[2] = SND_FULL_OF_BUBBLES;
+  DaytimeDuckSounds[3] = SND_LITTLE_RUBBER_DUCK_SONG;
 }
 
 void loop()
@@ -77,7 +113,11 @@ void loop()
   if (PlayingSong)
   {
     //Check status of sound module to determine when song is finished
-    //When finished, set PlayingSong to false
+    if (digitalRead(INPUT_BUSY_SIGNAL) == LOW)
+    {
+      //When finished, set PlayingSong to false
+      PlayingSong = false;
+    }
   }
   else
   {
@@ -150,8 +190,21 @@ void ExecuteDuckButtonPressed()
     if (DaytimeWindowSelected)
     {
       //Random pick from daytime sounds
+      //Example code below assumes 4 total songs
+      //so will return a value from 0-3 by calling rand(4)
+      int soundIndex = random(4);
+
+      //If we picked a song, call PlaySong to set the flag to not interrupt.
+      if (DaytimeDuckSounds[soundIndex] == SND_LITTLE_RUBBER_DUCK_SONG)
+      {
+        PlaySong(DaytimeDuckSounds[soundIndex]);
+      }
+      else
+      {
+        PlaySound(DaytimeDuckSounds[soundIndex]);
+      }
     }
-    else
+    else //nighttime
     {
       //Random pick from nighttime sounds
     }
@@ -267,6 +320,8 @@ void ExecuteModeChanged(bool oppositeMode)
   }
   else //Normal Mode
   {
+    //When changing back to normal mode, let the current window view
+    //control the played message so fake a window changed event
     ExecuteWindowChanged(DaytimeWindowSelected);
   }
 }
