@@ -2,11 +2,13 @@
 #include <DFPlayer_Mini_Mp3.h>
 
 //Definitions for sound tracks
+//Any track that is a song that should not be interrupted
+//should have 100 added to the number.
 #define SND_BRIGHT                      1
 #define SND_DARK                        2
 #define SND_LIGHTS_ON                   3
 #define SND_LIGHTS_OFF                  4
-#define SND_SUN_IS_UP                   5
+#define SND_SUN_IS_UP                   105
 #define SND_LETS_PRETEND_ITS_MORNING    6 // LETS-PRETEND_ITS_LUNCHTIME
 #define SND_LETS_PRETEND_ITS_NIGHTTIME  7
 #define SND_OPPOSITES                   8
@@ -17,7 +19,7 @@
 #define SND_WASH_YOUR_HANDS             13
 #define SND_TAKING_A_BATH               14
 #define SND_FULL_OF_BUBBLES             15
-#define SND_LITTLE_RUBBER_DUCK_SONG     16
+#define SND_LITTLE_RUBBER_DUCK_SONG     116
 //
 #define SND_SHORT_DOORBELL              17
 #define SND_LONG_DOORBELL               18
@@ -30,7 +32,8 @@
 #define SND_DAY                         20
       
 //Definiations for house inputs and outputs
-#define INPUT_LIGHT_SWITCH 1
+//0 and 1 are reserved for the serial port
+#define INPUT_LIGHT_SWITCH 11
 #define INPUT_DOORBELL     2
 #define INPUT_BIRDS        3
 #define INPUT_FRIDGE_DOOR  4
@@ -64,19 +67,18 @@ int DaytimeDuckSounds[4];
 
 bool PlayingSong;
 
-void PlaySong(int songNumber)
-{
-  //Send track to play to sound module
-  //Set flag that we are playing a song so don't interrupt
-  PlayingSong = true;
-  mp3_play (songNumber);
-  delay(100); //Wait 100ms before moving on to make sure the song has started playing and busy signal is high
-}
-
 void PlaySound(int soundNumber)
 {
+  //If playing a song, we ignore other sound requests until the song completes
+  if (PlayingSong)
+    return;
+  
+  if (soundNumber >= 100)  
+    PlayingSong = true;
+  
   //Send track to play to sound module
   mp3_play (soundNumber);
+  delay(100); //Wait 100ms before moving on to make sure the sound has started playing and busy signal is high
 }
 
 void setup()
@@ -109,52 +111,46 @@ void setup()
 
 void loop()
 {    
-  //If playing a song, we ignore other buttton presses until the song completes
-  if (PlayingSong)
+  //Check status of sound module to determine when song is finished
+  if (digitalRead(INPUT_BUSY_SIGNAL) == LOW)
   {
-    //Check status of sound module to determine when song is finished
-    if (digitalRead(INPUT_BUSY_SIGNAL) == LOW)
-    {
-      //When finished, set PlayingSong to false
-      PlayingSong = false;
-    }
+    //When busy signal drops, set PlayingSong to false
+    PlayingSong = false;
   }
-  else
-  {
-    //Check our inputs for any that changed state
 
-    //Rubber Duck
-    if (ButtonPressed(INPUT_DUCK, &DuckPressed))
-      ExecuteDuckButtonPressed();
+  //Check our inputs for any that changed state
 
-    //Doorbell
-    if (ButtonPressed(INPUT_DOORBELL, &DoorbellPressed))
-      ExecuteDoorbellPressed();
+  //Rubber Duck
+  if (ButtonPressed(INPUT_DUCK, &DuckPressed))
+    ExecuteDuckButtonPressed();
 
-    //Book
-    if (ButtonPressed(INPUT_BOOK, &BookPressed))
-      ExecuteBookPressed();
+  //Doorbell
+  if (ButtonPressed(INPUT_DOORBELL, &DoorbellPressed))
+    ExecuteDoorbellPressed();
 
-    //Refrigerator Door
-    if (StateChanged(INPUT_FRIDGE_DOOR, &FridgeDoorOpen))
-      ExecuteFridgeDoorChanged(FridgeDoorOpen);
+  //Book
+  if (ButtonPressed(INPUT_BOOK, &BookPressed))
+    ExecuteBookPressed();
 
-    //Light Switch
-    if (StateChanged(INPUT_LIGHT_SWITCH, &LightSwitchOn))
-      ExecuteLightSwitchChanged(LightSwitchOn);
+  //Refrigerator Door
+  if (StateChanged(INPUT_FRIDGE_DOOR, &FridgeDoorOpen))
+    ExecuteFridgeDoorChanged(FridgeDoorOpen);
 
-    //Birds
-    if (StateChanged(INPUT_BIRDS, &LittleBirdDown))
-      ExecuteBirdsChanged(LittleBirdDown);
+  //Light Switch
+  if (StateChanged(INPUT_LIGHT_SWITCH, &LightSwitchOn))
+    ExecuteLightSwitchChanged(LightSwitchOn);
 
-    //Window
-    if (StateChanged(INPUT_WINDOW, &DaytimeWindowSelected))
-      ExecuteWindowChanged(DaytimeWindowSelected);
+  //Birds
+  if (StateChanged(INPUT_BIRDS, &LittleBirdDown))
+    ExecuteBirdsChanged(LittleBirdDown);
 
-    //Mode
-    if (StateChanged(INPUT_MODE, &OppositeModeSelected))
-      ExecuteModeChanged(OppositeModeSelected);
-  }
+  //Window
+  if (StateChanged(INPUT_WINDOW, &DaytimeWindowSelected))
+    ExecuteWindowChanged(DaytimeWindowSelected);
+
+  //Mode
+  if (StateChanged(INPUT_MODE, &OppositeModeSelected))
+    ExecuteModeChanged(OppositeModeSelected);
 }
 
 bool ButtonPressed(int buttonInput, bool* lastState)
@@ -197,7 +193,7 @@ void ExecuteDuckButtonPressed()
       //If we picked a song, call PlaySong to set the flag to not interrupt.
       if (DaytimeDuckSounds[soundIndex] == SND_LITTLE_RUBBER_DUCK_SONG)
       {
-        PlaySong(DaytimeDuckSounds[soundIndex]);
+        PlaySound(DaytimeDuckSounds[soundIndex]);
       }
       else
       {
@@ -266,7 +262,7 @@ void ExecuteLightSwitchChanged(bool lightOn)
     if (lightOn)
     {
       LightSwitchState = NO_SunIsUpSong;
-      PlaySong(SND_SUN_IS_UP);
+      PlaySound(SND_SUN_IS_UP);
     }
   }
 }
