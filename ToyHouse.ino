@@ -1,70 +1,98 @@
 #include <SoftwareSerial.h>
 #include <DFPlayer_Mini_Mp3.h>
+#include "SwitchMonitor.h"
 
 //Definitions for sound tracks
-//Any track that is a song that should not be interrupted
-//should have 100 added to the number.
 #define SND_BRIGHT                      1
-#define SND_DARK                        2
-#define SND_LIGHTS_ON                   3
+#define SND_LIGHTS_ON                   2
+#define SND_DARK                        3
 #define SND_LIGHTS_OFF                  4
-#define SND_SUN_IS_UP                   105
-#define SND_LETS_PRETEND_ITS_MORNING    6 // LETS-PRETEND_ITS_LUNCHTIME
-#define SND_LETS_PRETEND_ITS_NIGHTTIME  7
-#define SND_OPPOSITES                   8
-#define SND_SUN                         9
-#define SND_MOON                        10
-#define SND_LITTLE_BIRD_DOWN            11
-#define SND_BIG_BIRD_DOWN               12
-#define SND_WASH_YOUR_HANDS             13
-#define SND_TAKING_A_BATH               14
-#define SND_FULL_OF_BUBBLES             15
-#define SND_LITTLE_RUBBER_DUCK_SONG     116
-//
-#define SND_SHORT_DOORBELL              17
-#define SND_LONG_DOORBELL               18
+
+#define SND_SHORT_DOORBELL              5
+#define SND_LONG_DOORBELL               6
+#define SND_LETS_PRETEND_ITS_MORNING    7 
+#define SND_LETS_PRETEND_ITS_LUNCHTIME  8
+#define SND_LETS_PRETEND_ITS_NIGHTTIME  9
+#define SND_SUN                         10
+#define SND_MOON                        11
+#define SND_NIGHT                       12
+#define SND_DAY                         13
+#define SND_OPPOSITES                   14
+#define SND_LITTLE_BIRD_DOWN            15
+#define SND_BIG_BIRD_DOWN               16
+#define SND_SOFT_TWEET                  17
+#define SND_LOUD_TWEET                  18
 #define SND_QUACK_LONG                  19
 #define SND_QUACK_SHORT                 20
 #define SND_QUACK_LOUD                  21
-#define SND_QUACK_QUIET                 22
+#define SND_QUACK_SOFT                  22
 
-#define SND_NIGHT                       19
-#define SND_DAY                         20
+//do not change order of the following
+#define SND_BRUSH_TEETH_MORNING         23    //rand InMorningMode
+#define SND_GOOD_MORNING                24    //rand InMorningMode
+#define SND_WASH_YOUR_HANDS_LUNCHTIME   25    //rand afternoon
+#define SND_QUACK_SOFT_2                26    //rand afternoon or rand nighttime
+#define SND_BRUSH_TEETH_BEDTIME         27    //rand nighttime
+#define SND_TAKING_A_BATH               28    //rand nighttime
+#define SND_FULL_OF_BUBBLES             29    //rand nighttime
+#define SND_TURN_ON_THE_WATER           30    //rand nighttime  
+#define SNG_LITTLE_RUBBER_DUCK_SONG     31    //rand nighttime
+
+#define SND_OPEN                        40
+#define SND_CLOSE                       41 
+#define SND_WHERE_IS_THE_CHICKEN        42  
+#define SND_WHERE_IS_THE_MILK           43
+#define SND_BRR_ITS_TOO_COLD            44 
+#define SND_LETS_COOK                   45
+
+#define SND_SUN_IS_UP                   50
+#define SND_STORY1                      51
+#define SND_STORY2                      52
+#define SND_STORY3                      53
+#define SND_STORY4                      54
       
-//Definiations for house inputs and outputs
+//Definitions for house inputs and outputs
 //0 and 1 are reserved for the serial port
-#define INPUT_LIGHT_SWITCH 11
-#define INPUT_DOORBELL     2
-#define INPUT_BIRDS        3
-#define INPUT_FRIDGE_DOOR  4
-#define INPUT_BOOK         5
-#define INPUT_DUCK         6
-#define INPUT_WINDOW       7
+#define INPUT_FRIDGE_DOOR  2
+#define INPUT_BOOK         3  //single state only?
+#define INPUT_DUCK         4  //single state only?
+#define INPUT_LIGHT_SWITCH 5
+#define INPUT_BIRDS        6
+#define INPUT_DOORBELL     7  //single state only?
 #define INPUT_MODE         8
-#define OUTPUT_LAMP        9
+#define INPUT_WINDOW       9
 
 #define INPUT_BUSY_SIGNAL  10
 
-bool LightSwitchOn;
-enum LightSwitchStates
-{
-  OP_LightsOn,
-  OP_LightsOff,
-  OP_Bright,
-  OP_Dark,
-  NO_SunIsUpSong
-} LightSwitchState;
+#define OUTPUT_LAMP        11
 
-bool DoorbellPressed;
-bool LittleBirdDown;
-bool FridgeDoorOpen;
-bool BookPressed;
-bool DuckPressed;
-bool DaytimeWindowSelected;
+
+SwitchMonitor BookButton;
+int LastBookPressedSound;
+
+SwitchMonitor DuckButton;
+int LastDuckPressedSound;
+
+SwitchMonitor DoorbellButton;
+int LastDoorBellSound;
+
+SwitchMonitor LightSwitch;
+int LastLightSwitchSound;
+
+SwitchMonitor LittleBird;
+int LastBirdSound;
+
+SwitchMonitor FridgeDoor;
+int LastFridgeDoorSound;
+
+SwitchMonitor WindowSwitch;
+int LastWindowSound;
+
+SwitchMonitor ModeSwitch;
+
 bool OppositeModeSelected;
-
-int DaytimeDuckSounds[4];
-
+bool DaytimeWindowSelected;
+bool InMorningMode;
 bool PlayingSong;
 
 void PlaySound(int soundNumber)
@@ -72,12 +100,23 @@ void PlaySound(int soundNumber)
   //If playing a song, we ignore other sound requests until the song completes
   if (PlayingSong)
     return;
+
+  switch (soundNumber)
+  {
+    case SNG_LITTLE_RUBBER_DUCK_SONG:
+      PlayingSong = true;       
+      Serial.println("Playing Song");
+      break;
+    default:
+      PlayingSong = false;
+      break;
+  }
   
-  if (soundNumber >= 100)  
-    PlayingSong = true;
-  
-  //Send track to play to sound module
-  mp3_play (soundNumber);
+  //Send track to play to sound module  
+  //mp3_play (soundNumber);
+  //For debugging for now, print out the song number we wanted to play
+  Serial.print("Playing Sound: ");
+  Serial.println(soundNumber);
   delay(100); //Wait 100ms before moving on to make sure the sound has started playing and busy signal is high
 }
 
@@ -85,98 +124,72 @@ void setup()
 {
   //Initialize serial port for sound module
   Serial.begin (9600);
-  mp3_set_serial (Serial);      //set Serial for DFPlayer-mini mp3 module 
-  delay(1);                     // delay 1ms to set volume
-  mp3_set_volume (5);          // value 0~30
+  //mp3_set_serial (Serial);      //set Serial for DFPlayer-mini mp3 module 
+  //delay(1);                     // delay 1ms to set volume
+  //mp3_set_volume (5);          // value 0~30
 
-  //Read in initial state of all buttons so we don't get changed events on everything
-  DuckPressed = digitalRead(INPUT_DUCK);
-  DoorbellPressed = digitalRead(INPUT_DOORBELL);
-  BookPressed = digitalRead(INPUT_BOOK);
-  FridgeDoorOpen = digitalRead(INPUT_FRIDGE_DOOR);
-  LightSwitchOn = digitalRead(INPUT_LIGHT_SWITCH);
-  LittleBirdDown = digitalRead(INPUT_BIRDS);
-  DaytimeWindowSelected = digitalRead(INPUT_WINDOW);
-  OppositeModeSelected = digitalRead(INPUT_MODE);
+  BookButton.Init(INPUT_BOOK);
+  DuckButton.Init(INPUT_DUCK);
+  DoorbellButton.Init(INPUT_DOORBELL);
+  FridgeDoor.Init(INPUT_FRIDGE_DOOR);
+  LightSwitch.Init(INPUT_LIGHT_SWITCH);
+  LittleBird.Init(INPUT_BIRDS);
+  WindowSwitch.Init(INPUT_WINDOW);
+  ModeSwitch.Init(INPUT_MODE);
   
   //Make sure lamp output is off
   digitalWrite(OUTPUT_LAMP, false);
-
-  //Load arrays for groups of sounds
-  DaytimeDuckSounds[0] = SND_WASH_YOUR_HANDS;
-  DaytimeDuckSounds[1] = SND_TAKING_A_BATH;
-  DaytimeDuckSounds[2] = SND_FULL_OF_BUBBLES;
-  DaytimeDuckSounds[3] = SND_LITTLE_RUBBER_DUCK_SONG;
 }
 
 void loop()
 {    
   //Check status of sound module to determine when song is finished
-  if (digitalRead(INPUT_BUSY_SIGNAL) == LOW)
+  if (PlayingSong && digitalRead(INPUT_BUSY_SIGNAL) == LOW)
   {
-    //When busy signal drops, set PlayingSong to false
-    PlayingSong = false;
+      //When busy signal drops, set PlayingSong to false
+      PlayingSong = false;  
   }
 
   //Check our inputs for any that changed state
 
   //Rubber Duck
-  if (ButtonPressed(INPUT_DUCK, &DuckPressed))
+  if (DuckButton.StateChanged() && DuckButton.On)
     ExecuteDuckButtonPressed();
 
   //Doorbell
-  if (ButtonPressed(INPUT_DOORBELL, &DoorbellPressed))
+  if (DoorbellButton.StateChanged() && DoorbellButton.On)
     ExecuteDoorbellPressed();
 
   //Book
-  if (ButtonPressed(INPUT_BOOK, &BookPressed))
+  if (BookButton.StateChanged() && BookButton.On)
     ExecuteBookPressed();
 
   //Refrigerator Door
-  if (StateChanged(INPUT_FRIDGE_DOOR, &FridgeDoorOpen))
-    ExecuteFridgeDoorChanged(FridgeDoorOpen);
+  if (FridgeDoor.StateChanged())
+    ExecuteFridgeDoorChanged(FridgeDoor.On);
 
   //Light Switch
-  if (StateChanged(INPUT_LIGHT_SWITCH, &LightSwitchOn))
-    ExecuteLightSwitchChanged(LightSwitchOn);
+  if (LightSwitch.StateChanged())
+    ExecuteLightSwitchChanged(LightSwitch.On);
 
   //Birds
-  if (StateChanged(INPUT_BIRDS, &LittleBirdDown))
-    ExecuteBirdsChanged(LittleBirdDown);
+  if (LittleBird.StateChanged())
+    ExecuteBirdsChanged(LittleBird.On);
 
   //Window
-  if (StateChanged(INPUT_WINDOW, &DaytimeWindowSelected))
-    ExecuteWindowChanged(DaytimeWindowSelected);
+  if (WindowSwitch.StateChanged())
+    ExecuteWindowChanged(WindowSwitch.On);
+  DaytimeWindowSelected = WindowSwitch.On;
 
   //Mode
-  if (StateChanged(INPUT_MODE, &OppositeModeSelected))
-    ExecuteModeChanged(OppositeModeSelected);
-}
-
-bool ButtonPressed(int buttonInput, bool* lastState)
-{
-  //Look for falling edge of push buttons
-  bool inputState = digitalRead(buttonInput);
-  if (inputState != *lastState)
-  {
-    *lastState = inputState;
-    return (!inputState);
-  }  
-}
-
-bool StateChanged(int switchInput, bool* lastState)
-{
-  bool inputState = digitalRead(switchInput);
-  if (inputState != *lastState)
-  {
-    *lastState = inputState;
-    return true;
-  }
-  return false;
+  if (ModeSwitch.StateChanged())
+    ExecuteModeChanged(ModeSwitch.On);
+  OppositeModeSelected = ModeSwitch.On;
 }
 
 void ExecuteDuckButtonPressed()
-{
+{  
+  Serial.println("Duck Pressed");
   if (OppositeModeSelected)
   {
     //Scroll through opposite pairs
@@ -185,73 +198,62 @@ void ExecuteDuckButtonPressed()
   {
     if (DaytimeWindowSelected)
     {
-      //Random pick from daytime sounds
-      //Example code below assumes 4 total songs
-      //so will return a value from 0-3 by calling rand(4)
-      int soundIndex = random(4);
-
-      //If we picked a song, call PlaySong to set the flag to not interrupt.
-      if (DaytimeDuckSounds[soundIndex] == SND_LITTLE_RUBBER_DUCK_SONG)
+      if (InMorningMode)
       {
-        PlaySound(DaytimeDuckSounds[soundIndex]);
-      }
-      else
+        //Random pick from daytime sounds
+        PlaySound(random(SND_QUACK_SOFT, SND_WASH_YOUR_HANDS_LUNCHTIME+1));
+      } 
+      else //afternoon
       {
-        PlaySound(DaytimeDuckSounds[soundIndex]);
+        //Random pick from afternoon sounds
+        PlaySound(random(SND_WASH_YOUR_HANDS_LUNCHTIME, SND_BRUSH_TEETH_BEDTIME+1));
       }
     }
     else //nighttime
     {
-      //Random pick from nighttime sounds
+      //Random pick from nighttime sounds 
+      PlaySound(random(SND_QUACK_SOFT_2, SNG_LITTLE_RUBBER_DUCK_SONG+1)); 
     }
   }
 }
 
 void ExecuteDoorbellPressed()
-{
-  
+{  
+  Serial.println("Doorbell Pressed");
 }
 
 void ExecuteBookPressed()
-{
-  
+{  
+  Serial.println("Book Pressed");
 }
 
 void ExecuteFridgeDoorChanged(bool doorOpen)
 {
-
+  Serial.print("Fridge Door Changed - Door ");
+  Serial.println((doorOpen ? "Open" : "Closed"));
 }
 
 void ExecuteLightSwitchChanged(bool lightOn)
 {
+  Serial.print("Light Switch Changed - Light ");
+  Serial.println((lightOn ? "On" : "Off"));
+  
   if (OppositeModeSelected)
   {
     if (lightOn)
     {
-      switch (LightSwitchState)
-      {
-        case OP_LightsOff:
-          LightSwitchState = OP_Bright;
-          PlaySound(SND_BRIGHT);
-          break;
-        case OP_Dark:
-        default:
-          LightSwitchState = OP_LightsOn;
-          PlaySound(SND_LIGHTS_ON);
-          break;
-      }
+      LastLightSwitchSound = random(SND_BRIGHT, SND_LIGHTS_ON+1);
+      PlaySound(LastLightSwitchSound);
     }
     else
     {
-      switch (LightSwitchState)
+      switch (LastLightSwitchSound)
       {
-        case OP_LightsOn:
-          LightSwitchState = OP_LightsOff;
+        case SND_LIGHTS_ON:
           PlaySound(SND_LIGHTS_OFF);
           break;
-        case OP_Bright:
+        case SND_BRIGHT:
         default:
-          LightSwitchState = OP_Dark;
           PlaySound(SND_DARK);
           break;
       }
@@ -261,32 +263,42 @@ void ExecuteLightSwitchChanged(bool lightOn)
   {
     if (lightOn)
     {
-      LightSwitchState = NO_SunIsUpSong;
-      PlaySound(SND_SUN_IS_UP);
+      //Random pick from daytime sounds
+      PlaySound(random(SND_SUN_IS_UP, SND_WASH_YOUR_HANDS_LUNCHTIME+1));
+    } 
+    else //afternoon
+    {
+      //Random pick from afternoon sounds
+      PlaySound(random(SND_WASH_YOUR_HANDS_LUNCHTIME, SND_BRUSH_TEETH_BEDTIME+1));
     }
   }
 }
 
-void ExecuteBirdsChanged(bool littleBirdDown)
+void ExecuteBirdsChanged(bool littleBirdUp)
 {
+  Serial.print("Birds Changed - Little Bird ");
+  Serial.println((littleBirdUp ? "Up" : "Down"));
+  
   if (OppositeModeSelected)
   {
-    if (littleBirdDown)
+    if (littleBirdUp)
     {
-      PlaySound(SND_LITTLE_BIRD_DOWN);
+      PlaySound(SND_BIG_BIRD_DOWN);
     }
     else
     {
-      PlaySound(SND_BIG_BIRD_DOWN);
+      PlaySound(SND_LITTLE_BIRD_DOWN);
     }
   }
 }
 
 void ExecuteWindowChanged(bool daytimeView)
-{
+{  
+  Serial.print("Window Changed: ");
+  Serial.println((daytimeView ? "Daytime" : "Nighttime"));
   if (OppositeModeSelected)
   {
-    if (DaytimeWindowSelected)
+    if (daytimeView)
     {
       PlaySound(SND_SUN);  
     }
@@ -297,9 +309,17 @@ void ExecuteWindowChanged(bool daytimeView)
   }
   else //Normal Mode
   {
-    if (DaytimeWindowSelected)
+    if (daytimeView)
     {
-      PlaySound(SND_LETS_PRETEND_ITS_MORNING);
+      InMorningMode = !InMorningMode;      
+      if(InMorningMode)
+      {
+        PlaySound(SND_LETS_PRETEND_ITS_MORNING);
+      }
+      else //afternoon
+      {
+        PlaySound(SND_LETS_PRETEND_ITS_LUNCHTIME);
+      }      
     }
     else
     {
@@ -309,7 +329,9 @@ void ExecuteWindowChanged(bool daytimeView)
 }
 
 void ExecuteModeChanged(bool oppositeMode)
-{
+{  
+  Serial.print("Mode Changed: ");
+  Serial.println((oppositeMode ? "Opposites" : "Normal"));
   if (oppositeMode)
   {
     PlaySound(SND_OPPOSITES);
