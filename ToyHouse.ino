@@ -105,18 +105,17 @@ void PlaySound(int soundNumber)
   {
     case SNG_LITTLE_RUBBER_DUCK_SONG:
       PlayingSong = true;       
-      Serial.println("Playing Song");
+      //Serial.println("Playing Song");
       break;
     default:
-      PlayingSong = false;
       break;
   }
   
   //Send track to play to sound module  
-  //mp3_play (soundNumber);
+  mp3_play (soundNumber);
   //For debugging for now, print out the song number we wanted to play
-  Serial.print("Playing Sound: ");
-  Serial.println(soundNumber);
+  //Serial.print("Playing Sound: ");
+  //Serial.println(soundNumber);
   delay(100); //Wait 100ms before moving on to make sure the sound has started playing and busy signal is high
 }
 
@@ -124,9 +123,9 @@ void setup()
 {
   //Initialize serial port for sound module
   Serial.begin (9600);
-  //mp3_set_serial (Serial);      //set Serial for DFPlayer-mini mp3 module 
-  //delay(1);                     // delay 1ms to set volume
-  //mp3_set_volume (1);          // value 0~30
+  mp3_set_serial (Serial);      //set Serial for DFPlayer-mini mp3 module 
+  delay(1);                     // delay 1ms to set volume
+  mp3_set_volume (20);          // value 0~30
 
   BookButton.Init(INPUT_BOOK);
   DuckButton.Init(INPUT_DUCK);
@@ -179,17 +178,15 @@ void loop()
   //Window
   if (WindowSwitch.StateChanged())
     ExecuteWindowChanged(WindowSwitch.On);
-  DaytimeWindowSelected = WindowSwitch.On;
 
   //Mode
   if (ModeSwitch.StateChanged())
     ExecuteModeChanged(ModeSwitch.On);
-  OppositeModeSelected = ModeSwitch.On;
 }
 
 void ExecuteDuckButtonPressed()
 {  
-  Serial.println("Duck Pressed");
+  //Serial.println("Duck Pressed");
   if (OppositeModeSelected)
   {
     //Scroll through opposite pairs
@@ -219,44 +216,69 @@ void ExecuteDuckButtonPressed()
 
 void ExecuteDoorbellPressed()
 {  
-  Serial.println("Doorbell Pressed");
+  PlaySound(SND_LONG_DOORBELL);
+  //Serial.println("Doorbell Pressed");
+  if (OppositeModeSelected)
+  {
+    
+  }
+  else
+  {
+    if (DaytimeWindowSelected)
+    {
+      if (InMorningMode)
+      {
+        
+      } 
+      else //afternoon
+      {
+        
+      }
+    }
+    else //nighttime
+    {
+      
+    }
+  }
 }
 
 void ExecuteBookPressed()
 {  
-  Serial.println("Book Pressed");
+  //Serial.println("Book Pressed");
 }
 
 void ExecuteFridgeDoorChanged(bool doorOpen)
 {
-  Serial.print("Fridge Door Changed - Door ");
-  Serial.println((doorOpen ? "Open" : "Closed"));
+  //Serial.print("Fridge Door Changed - Door ");
+  //Serial.println((doorOpen ? "Open" : "Closed"));
 }
 
 void ExecuteLightSwitchChanged(bool lightOn)
 {
-  Serial.print("Light Switch Changed - Light ");
-  Serial.println((lightOn ? "On" : "Off"));
-  
+  //Serial.print("Light Switch Changed - Light ");
+  //Serial.println((lightOn ? "On" : "Off"));
+    
   if (OppositeModeSelected)
   {
     if (lightOn)
     {
-      LastLightSwitchSound = random(SND_BRIGHT, SND_LIGHTS_ON+1);
-      PlaySound(LastLightSwitchSound);
+      PlaySound(SND_LIGHTS_ON);
+      //LastLightSwitchSound = random(SND_BRIGHT, SND_LIGHTS_ON+1);
+      //PlaySound(LastLightSwitchSound);
     }
     else
     {
-      switch (LastLightSwitchSound)
-      {
-        case SND_LIGHTS_ON:
-          PlaySound(SND_LIGHTS_OFF);
-          break;
-        case SND_BRIGHT:
-        default:
-          PlaySound(SND_DARK);
-          break;
-      }
+      PlaySound(SND_LIGHTS_OFF);
+      //switch (LastLightSwitchSound)
+      //{
+      // case SND_LIGHTS_ON:
+      //    PlaySound(SND_LIGHTS_OFF);
+      //   break;
+      //  case SND_BRIGHT:
+      //  default:
+      //    PlaySound(SND_DARK);
+      //    break;
+      //}
     }
   }
   else //Normal Mode
@@ -276,8 +298,8 @@ void ExecuteLightSwitchChanged(bool lightOn)
 
 void ExecuteBirdsChanged(bool littleBirdUp)
 {
-  Serial.print("Birds Changed - Little Bird ");
-  Serial.println((littleBirdUp ? "Up" : "Down"));
+  //Serial.print("Birds Changed - Little Bird ");
+  //Serial.println((littleBirdUp ? "Up" : "Down"));
   
   if (OppositeModeSelected)
   {
@@ -294,8 +316,10 @@ void ExecuteBirdsChanged(bool littleBirdUp)
 
 void ExecuteWindowChanged(bool daytimeView)
 {  
-  Serial.print("Window Changed: ");
-  Serial.println((daytimeView ? "Daytime" : "Nighttime"));
+  //Serial.print("Window Changed: ");
+  //Serial.println((daytimeView ? "Daytime" : "Nighttime"));
+  DaytimeWindowSelected = daytimeView;
+  
   if (OppositeModeSelected)
   {
     if (daytimeView)
@@ -311,7 +335,8 @@ void ExecuteWindowChanged(bool daytimeView)
   {
     if (daytimeView)
     {
-      InMorningMode = !InMorningMode;      
+      InMorningMode = !InMorningMode;    
+      //Serial.println((InMorningMode ? "It's Morning" : "It's Lunchtime"));  
       if(InMorningMode)
       {
         PlaySound(SND_LETS_PRETEND_ITS_MORNING);
@@ -330,8 +355,9 @@ void ExecuteWindowChanged(bool daytimeView)
 
 void ExecuteModeChanged(bool oppositeMode)
 {  
-  Serial.print("Mode Changed: ");
-  Serial.println((oppositeMode ? "Opposites" : "Normal"));
+  //Serial.print("Mode Changed: ");
+  //Serial.println((oppositeMode ? "Opposites" : "Normal"));  
+  OppositeModeSelected = oppositeMode;
   if (oppositeMode)
   {
     PlaySound(SND_OPPOSITES);
